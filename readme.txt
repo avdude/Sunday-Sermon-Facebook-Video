@@ -4,7 +4,7 @@ Tags: church, sermon, facebook, video, live stream
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 2.4.0
+Stable tag: 2.4.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -71,6 +71,10 @@ Anthropic Privacy Policy: https://www.anthropic.com/legal/privacy
 3. Settings.
 
 == Changelog ==
+
+= 2.4.1 =
+* Shows AssemblyAI's full error message (and request ID) instead of just the HTTP code.
+* AssemblyAI model is now a dropdown filled from AssemblyAI's current model list.
 
 = 2.4.0 =
 * Sermon summaries can now use AssemblyAI's LLM Gateway (the default, using your existing AssemblyAI key) or Claude directly from Anthropic.

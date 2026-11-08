@@ -190,13 +190,7 @@ final class SSFV_Summaries {
 		$code = (int) wp_remote_retrieve_response_code( $res );
 		$data = json_decode( wp_remote_retrieve_body( $res ), true );
 		if ( 200 !== $code ) {
-			$msg = 'HTTP ' . $code;
-			if ( isset( $data['error']['message'] ) ) {
-				$msg = $data['error']['message'];
-			} elseif ( isset( $data['error'] ) && is_string( $data['error'] ) ) {
-				$msg = $data['error'];
-			}
-			return new WP_Error( 'ssfv_sum', 'AssemblyAI: ' . $msg );
+			return new WP_Error( 'ssfv_sum', 'AssemblyAI: ' . self::gateway_error( $code, $data, wp_remote_retrieve_body( $res ) ) );
 		}
 		$content = isset( $data['choices'][0]['message']['content'] ) ? $data['choices'][0]['message']['content'] : '';
 		if ( is_array( $content ) ) { // Some gateways return content blocks.
@@ -207,6 +201,68 @@ final class SSFV_Summaries {
 			$content = $text;
 		}
 		return (string) $content;
+	}
+
+	/** Readable message from an LLM Gateway error response. */
+	public static function gateway_error( $code, $data, $raw ) {
+		$parts = array();
+		if ( is_array( $data ) ) {
+			if ( isset( $data['message'] ) && is_string( $data['message'] ) ) {
+				$parts[] = $data['message'];
+			}
+			if ( isset( $data['error']['message'] ) ) {
+				$parts[] = $data['error']['message'];
+			} elseif ( isset( $data['error'] ) && is_string( $data['error'] ) ) {
+				$parts[] = $data['error'];
+			}
+			if ( isset( $data['detail'] ) ) {
+				$parts[] = is_string( $data['detail'] ) ? $data['detail'] : wp_json_encode( $data['detail'] );
+			}
+			if ( ! empty( $data['metadata']['errors'] ) && is_array( $data['metadata']['errors'] ) ) {
+				$parts[] = implode( '; ', array_map( 'strval', $data['metadata']['errors'] ) );
+			}
+		}
+		if ( ! $parts && '' !== trim( (string) $raw ) ) {
+			$parts[] = wp_html_excerpt( wp_strip_all_tags( (string) $raw ), 200, '…' );
+		}
+		$msg = $parts ? implode( ' — ', array_unique( $parts ) ) : '';
+		$msg = 'HTTP ' . (int) $code . ( '' !== $msg ? ': ' . $msg : '' );
+		if ( is_array( $data ) && ! empty( $data['request_id'] ) ) {
+			$msg .= ' (request ' . $data['request_id'] . ')';
+		}
+		return $msg;
+	}
+
+	/**
+	 * Model IDs available on AssemblyAI's LLM Gateway (public list, cached for a day).
+	 * Returns array( id => name ), or an empty array if the list can't be loaded.
+	 */
+	public static function gateway_models() {
+		$cached = get_transient( 'ssfv_aai_models' );
+		if ( is_array( $cached ) ) {
+			return $cached;
+		}
+		$res = wp_remote_get( 'https://llm-gateway.assemblyai.com/v1/models', array( 'timeout' => 10 ) );
+		if ( is_wp_error( $res ) || 200 !== (int) wp_remote_retrieve_response_code( $res ) ) {
+			return array();
+		}
+		$data   = json_decode( wp_remote_retrieve_body( $res ), true );
+		$models = array();
+		if ( ! empty( $data['data'] ) && is_array( $data['data'] ) ) {
+			foreach ( $data['data'] as $m ) {
+				if ( empty( $m['id'] ) ) {
+					continue;
+				}
+				if ( ! empty( $m['retirement_date'] ) && (int) $m['retirement_date'] > 0 && (int) $m['retirement_date'] < time() ) {
+					continue;
+				}
+				$models[ sanitize_text_field( $m['id'] ) ] = sanitize_text_field( ! empty( $m['name'] ) ? $m['name'] : $m['id'] );
+			}
+		}
+		if ( $models ) {
+			set_transient( 'ssfv_aai_models', $models, DAY_IN_SECONDS );
+		}
+		return $models;
 	}
 
 	public static function extract_json( $reply ) {
@@ -435,8 +491,21 @@ final class SSFV_Summaries {
 
 		<div class="ssv-field">
 			<label for="ssv_aai_llm_model"><?php esc_html_e( 'AssemblyAI model', 'sunday-sermon-facebook-video' ); ?></label>
-			<input type="text" id="ssv_aai_llm_model" name="<?php echo esc_attr( $name ); ?>[aai_llm_model]" value="<?php echo esc_attr( $s['aai_llm_model'] ); ?>" placeholder="<?php echo esc_attr( self::AAI_DEFAULT_MODEL ); ?>">
-			<p class="description"><?php esc_html_e( 'Used only with the AssemblyAI provider. Any model ID from AssemblyAI\'s LLM Gateway model list.', 'sunday-sermon-facebook-video' ); ?></p>
+			<?php $gw = self::gateway_models(); ?>
+			<?php if ( $gw ) : ?>
+				<select id="ssv_aai_llm_model" name="<?php echo esc_attr( $name ); ?>[aai_llm_model]">
+					<?php if ( ! isset( $gw[ $s['aai_llm_model'] ] ) ) : ?>
+						<option value="<?php echo esc_attr( $s['aai_llm_model'] ); ?>" selected><?php echo esc_html( $s['aai_llm_model'] . ' ' . __( '(not in AssemblyAI\'s current list)', 'sunday-sermon-facebook-video' ) ); ?></option>
+					<?php endif; ?>
+					<?php foreach ( $gw as $mid => $mname ) : ?>
+						<option value="<?php echo esc_attr( $mid ); ?>" <?php selected( $s['aai_llm_model'], $mid ); ?>><?php echo esc_html( $mname . ' (' . $mid . ')' ); ?></option>
+					<?php endforeach; ?>
+				</select>
+				<p class="description"><?php esc_html_e( 'Used only with the AssemblyAI provider. The list comes from AssemblyAI and refreshes daily.', 'sunday-sermon-facebook-video' ); ?></p>
+			<?php else : ?>
+				<input type="text" id="ssv_aai_llm_model" name="<?php echo esc_attr( $name ); ?>[aai_llm_model]" value="<?php echo esc_attr( $s['aai_llm_model'] ); ?>" placeholder="<?php echo esc_attr( self::AAI_DEFAULT_MODEL ); ?>">
+				<p class="description"><?php esc_html_e( 'Used only with the AssemblyAI provider. Couldn\'t load AssemblyAI\'s model list right now, so enter a model ID by hand.', 'sunday-sermon-facebook-video' ); ?></p>
+			<?php endif; ?>
 		</div>
 
 		<div class="ssv-field">
