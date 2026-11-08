@@ -3,7 +3,7 @@
  * Plugin Name:       Sunday Sermon Facebook Video
  * Plugin URI:        https://github.com/avdude/Sunday-Sermon-Facebook-Video
  * Description:       Automatically shows your church's latest Facebook service videos (videos, Reels, live streams and video posts) on your WordPress site, with a playlist of past services.
- * Version:           2.5.0
+ * Version:           2.5.1
  * Author:            avdude
  * Author URI:        https://avdude.com
  * License:           GPL-2.0-or-later
@@ -27,6 +27,7 @@ final class SSFV_Sunday_Sermon_Facebook_Video {
 
 	public static function init() {
 		add_shortcode( 'sunday_sermon', array( __CLASS__, 'shortcode' ) );
+		add_action( 'wp_footer', array( __CLASS__, 'print_footer_js' ), 99 );
 		add_shortcode( 'sunday_sermon_date', array( __CLASS__, 'date_shortcode' ) );
 		add_shortcode( 'sunday_sermon_archive', array( __CLASS__, 'archive_shortcode' ) );
 		add_action( 'admin_menu', array( __CLASS__, 'admin_menu' ) );
@@ -684,6 +685,25 @@ final class SSFV_Sunday_Sermon_Facebook_Video {
 		return $out;
 	}
 
+	/** Front-end scripts, printed once in the footer so content filters can't alter them. */
+	private static $footer_js = array();
+
+	public static function add_js( $js, $key = '' ) {
+		if ( '' !== $key ) {
+			self::$footer_js[ $key ] = $js;
+		} else {
+			self::$footer_js[] = $js;
+		}
+	}
+
+	public static function print_footer_js() {
+		if ( ! self::$footer_js ) {
+			return;
+		}
+		echo "<script id=\"ssfv-js\">\n" . implode( "\n", self::$footer_js ) . "\n</script>\n"; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- built by this plugin.
+		self::$footer_js = array();
+	}
+
 	/**
 	 * The 16:9 player box: Facebook player, or a thumbnail that opens Facebook.
 	 * With $lazy, the iframe's src is held in data-src until the archive script shows it.
@@ -851,7 +871,7 @@ final class SSFV_Sunday_Sermon_Facebook_Video {
 		$out .= '</div>';
 
 		$out .= '</div>';
-		$out .= '<script>(function(){var r=document.getElementById(' . wp_json_encode( $id ) . ');if(!r)return;'
+		self::add_js( '(function(){var r=document.getElementById(' . wp_json_encode( $id ) . ');if(!r)return;'
 			. 'var p=r.querySelectorAll(".ssv-panel"),b=r.querySelectorAll(".ssv-item"),t=r.querySelectorAll(".ssv-tr-panel"),c=0;'
 			. 'function show(i){if(i===c||i<0||i>=p.length)return;'
 			. 'var f=p[c].querySelector("iframe");if(f&&f.src){f.setAttribute("data-src",f.src);f.removeAttribute("src");}'
@@ -861,7 +881,7 @@ final class SSFV_Sunday_Sermon_Facebook_Video {
 			. 'var g=p[c].querySelector("iframe[data-src]");if(g){g.src=g.getAttribute("data-src");}'
 			. 'if(window.innerWidth<720){r.scrollIntoView({behavior:"smooth",block:"start"});}}'
 			. 'b.forEach(function(x){x.addEventListener("click",function(){show(parseInt(x.getAttribute("data-index"),10));});});'
-			. '})();</script>';
+			. '})();' );
 
 		return $out;
 	}
@@ -928,11 +948,11 @@ final class SSFV_Sunday_Sermon_Facebook_Video {
 			return;
 		}
 
-		wp_register_style( 'ssv-admin', false, array(), '2.5.0' );
+		wp_register_style( 'ssv-admin', false, array(), '2.5.1' );
 		wp_enqueue_style( 'ssv-admin' );
 		wp_add_inline_style( 'ssv-admin', self::admin_css() );
 
-		wp_register_script( 'ssv-admin', false, array(), '2.5.0', true );
+		wp_register_script( 'ssv-admin', false, array(), '2.5.1', true );
 		wp_enqueue_script( 'ssv-admin' );
 		wp_add_inline_script(
 			'ssv-admin',

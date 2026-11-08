@@ -484,7 +484,12 @@ final class SSFV_Transcripts {
 			. '.ssv-ts:hover,.ssv-ts:focus-visible{opacity:1;text-decoration:underline}'
 			. SSFV_Summaries::css()
 			. '</style>'
-			. '<script>(function(){if(window.ssfvTr)return;window.ssfvTr=1;'
+			. self::loader_js();
+	}
+
+	private static function loader_js() {
+		SSFV_Sunday_Sermon_Facebook_Video::add_js(
+			'(function(){if(window.ssfvTr)return;window.ssfvTr=1;'
 			. 'var api=' . wp_json_encode( esc_url_raw( rest_url( 'ssfv/v1/transcript/' ) ) ) . ';'
 			. 'document.addEventListener("click",function(e){var b=e.target.closest(".ssv-ts");if(!b)return;'
 			. 'var a=b.closest(".ssv-archive");var w=a?a.querySelector(".ssv-panel:not([hidden])"):(b.closest(".ssv-panel")||b.closest(".ssv-sermon"));'
@@ -494,7 +499,11 @@ final class SSFV_Transcripts {
 			. 'd.setAttribute("data-loaded","1");var body=d.querySelector(".ssv-tr-body");'
 			. 'fetch(api+encodeURIComponent(d.getAttribute("data-key"))).then(function(r){return r.json();}).then(function(j){body.innerHTML=j&&j.html?j.html:"";}).catch(function(){body.textContent="";});};'
 			. 'document.addEventListener("toggle",function(e){var d=e.target;if(d.matches&&d.matches("details.ssv-transcript"))window.ssfvTrLoad(d);},true);'
-			. '})();</script>';
+			. 'document.querySelectorAll("details.ssv-transcript[data-key][open]").forEach(function(d){var p=d.closest("[hidden]");if(!p)window.ssfvTrLoad(d);});'
+			. '})();',
+			'transcripts'
+		);
+		return '';
 	}
 
 	public static function rest_routes() {
