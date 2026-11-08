@@ -80,9 +80,11 @@ Needs transcripts turned on first.
 
 | Shortcode | Shows | Options |
 | --- | --- | --- |
-| `[sunday_sermon_archive]` | Player with a playlist of past services | `count` (default 8, max 100), `show_title`, `show_date`, `list_title`, `format`, `display`, `fallback`, `match`, `transcript` |
+| `[sunday_sermon_archive]` | Player with a playlist of past services | `count` (default 8, max 100), `show_title`, `show_date`, `list_title`, `format`, `display`, `fallback`, `match`, `transcript`, `transcript_position` |
 | `[sunday_sermon]` | The latest service only | `show_title`, `show_date`, `format`, `display`, `fallback`, `match`, `transcript` |
 | `[sunday_sermon_date]` | The latest service's date | `format`, `before`, `after`, `match` |
+
+In the archive the transcript sits in the right-hand column under **Past services**, beside the summary; use `transcript_position="below"` to put it under the summary instead.
 
 `format` uses [WordPress date codes](https://wordpress.org/documentation/article/customize-date-and-time-format/), e.g. `F j, Y`. `display` is one of `native` (play on site), `auto`, `embed` (Facebook player) or `thumbnail` (opens Facebook).
 

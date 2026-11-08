@@ -3,7 +3,7 @@
  * Plugin Name:       Sunday Sermon Facebook Video
  * Plugin URI:        https://github.com/avdude/Sunday-Sermon-Facebook-Video
  * Description:       Automatically shows your church's latest Facebook service videos (videos, Reels, live streams and video posts) on your WordPress site, with a playlist of past services.
- * Version:           2.4.2
+ * Version:           2.5.0
  * Author:            avdude
  * Author URI:        https://avdude.com
  * License:           GPL-2.0-or-later
@@ -754,13 +754,15 @@ final class SSFV_Sunday_Sermon_Facebook_Video {
 				'list_title' => __( 'Past services', 'sunday-sermon-facebook-video' ),
 				'display'  => $s['display'],
 				'transcript' => 'yes',
+				'transcript_position' => 'side',
 				'fallback' => __( 'This week\'s service video will be posted soon.', 'sunday-sermon-facebook-video' ),
 			),
 			$atts,
 			'sunday_sermon_archive'
 		);
 
-		$videos = array_slice( self::get_videos( $atts['match'] ), 0, max( 1, min( 100, absint( $atts['count'] ) ) ) );
+		$videos  = array_slice( self::get_videos( $atts['match'] ), 0, max( 1, min( 100, absint( $atts['count'] ) ) ) );
+		$side_tr = 'no' !== $atts['transcript'] && 'below' !== $atts['transcript_position'];
 
 		if ( ! $videos || empty( $videos[0]['url'] ) ) {
 			return '<p class="ssv-fallback">' . esc_html( $atts['fallback'] ) . '</p>';
@@ -812,7 +814,7 @@ final class SSFV_Sunday_Sermon_Facebook_Video {
 			$out .= '<p class="ssv-link"><a href="' . esc_url( $v['url'] ) . '" target="_blank" rel="noopener">'
 				. esc_html__( 'Watch on Facebook', 'sunday-sermon-facebook-video' ) . '</a></p>';
 			if ( 'no' !== $atts['transcript'] ) {
-				$out .= SSFV_Transcripts::render( $v, $i > 0 );
+				$out .= SSFV_Transcripts::render( $v, $i > 0, $side_tr ? 'summary' : 'all' );
 			}
 			$out .= '</div>';
 		}
@@ -838,15 +840,24 @@ final class SSFV_Sunday_Sermon_Facebook_Video {
 			}
 			$out .= '</span></span></button></li>';
 		}
-		$out .= '</ul></div>';
+		$out .= '</ul>';
+		if ( $side_tr ) {
+			foreach ( $videos as $i => $v ) {
+				$out .= '<div class="ssv-tr-panel" data-index="' . (int) $i . '"' . ( $i > 0 ? ' hidden' : '' ) . '>'
+					. SSFV_Transcripts::render( $v, $i > 0, 'transcript', true )
+					. '</div>';
+			}
+		}
+		$out .= '</div>';
 
 		$out .= '</div>';
 		$out .= '<script>(function(){var r=document.getElementById(' . wp_json_encode( $id ) . ');if(!r)return;'
-			. 'var p=r.querySelectorAll(".ssv-panel"),b=r.querySelectorAll(".ssv-item"),c=0;'
+			. 'var p=r.querySelectorAll(".ssv-panel"),b=r.querySelectorAll(".ssv-item"),t=r.querySelectorAll(".ssv-tr-panel"),c=0;'
 			. 'function show(i){if(i===c||i<0||i>=p.length)return;'
 			. 'var f=p[c].querySelector("iframe");if(f&&f.src){f.setAttribute("data-src",f.src);f.removeAttribute("src");}'
 			. 'var vv=p[c].querySelector("video");if(vv){vv.pause();}'
-			. 'p[c].hidden=true;b[c].setAttribute("aria-current","false");c=i;p[c].hidden=false;b[c].setAttribute("aria-current","true");'
+			. 'p[c].hidden=true;b[c].setAttribute("aria-current","false");if(t[c])t[c].hidden=true;c=i;p[c].hidden=false;b[c].setAttribute("aria-current","true");'
+			. 'if(t[c]){t[c].hidden=false;if(window.ssfvTrLoad)window.ssfvTrLoad(t[c].querySelector("details"));}'
 			. 'var g=p[c].querySelector("iframe[data-src]");if(g){g.src=g.getAttribute("data-src");}'
 			. 'if(window.innerWidth<720){r.scrollIntoView({behavior:"smooth",block:"start"});}}'
 			. 'b.forEach(function(x){x.addEventListener("click",function(){show(parseInt(x.getAttribute("data-index"),10));});});'
@@ -917,11 +928,11 @@ final class SSFV_Sunday_Sermon_Facebook_Video {
 			return;
 		}
 
-		wp_register_style( 'ssv-admin', false, array(), '2.4.2' );
+		wp_register_style( 'ssv-admin', false, array(), '2.5.0' );
 		wp_enqueue_style( 'ssv-admin' );
 		wp_add_inline_style( 'ssv-admin', self::admin_css() );
 
-		wp_register_script( 'ssv-admin', false, array(), '2.4.2', true );
+		wp_register_script( 'ssv-admin', false, array(), '2.5.0', true );
 		wp_enqueue_script( 'ssv-admin' );
 		wp_add_inline_script(
 			'ssv-admin',

@@ -4,7 +4,7 @@ Tags: church, sermon, facebook, video, live stream
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 2.4.2
+Stable tag: 2.5.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -71,6 +71,10 @@ Anthropic Privacy Policy: https://www.anthropic.com/legal/privacy
 3. Settings.
 
 == Changelog ==
+
+= 2.5.0 =
+* Archive: the transcript now sits in the right-hand column under Past services, beside the summary, open and scrollable. It switches with the selected service.
+* New archive option: transcript_position="below" for the previous layout.
 
 = 2.4.2 =
 * Trims the transcript to fit the chosen AssemblyAI model's context size (for example, 32k-token models), so long services don't fail.

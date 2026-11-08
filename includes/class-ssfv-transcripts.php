@@ -442,16 +442,24 @@ final class SSFV_Transcripts {
 	/**
 	 * The collapsible transcript under a player. $lazy loads it when opened (archive panels).
 	 */
-	public static function render( $video, $lazy = false ) {
+	/**
+	 * $part: 'all' (summary + transcript), 'summary' or 'transcript'. $open starts the transcript expanded.
+	 */
+	public static function render( $video, $lazy = false, $part = 'all', $open = false ) {
 		$key = isset( $video['key'] ) ? (string) $video['key'] : '';
 		$id  = self::find_post( $key );
 		if ( ! $id || 'completed' !== get_post_meta( $id, '_ssfv_status', true ) ) {
 			return '';
 		}
 
-		$out  = self::assets();
-		$out .= SSFV_Summaries::render( $id );
-		$out .= '<details class="ssv-transcript"' . ( $lazy ? ' data-key="' . esc_attr( $key ) . '"' : '' ) . '>';
+		$out = self::assets();
+		if ( 'transcript' !== $part ) {
+			$out .= SSFV_Summaries::render( $id );
+		}
+		if ( 'summary' === $part ) {
+			return $out;
+		}
+		$out .= '<details class="ssv-transcript"' . ( $lazy ? ' data-key="' . esc_attr( $key ) . '"' : '' ) . ( $open ? ' open' : '' ) . '>';
 		$out .= '<summary>' . esc_html__( 'Transcript', 'sunday-sermon-facebook-video' ) . '</summary>';
 		$out .= '<div class="ssv-tr-body">' . ( $lazy ? '<p class="ssv-tr-loading">' . esc_html__( 'Loading…', 'sunday-sermon-facebook-video' ) . '</p>' : self::body_html( $id ) ) . '</div>';
 		$out .= '</details>';
@@ -470,6 +478,8 @@ final class SSFV_Transcripts {
 			. '.ssv-transcript summary{cursor:pointer;padding:10px 0;font-weight:600}'
 			. '.ssv-tr-body{max-height:420px;overflow-y:auto;padding:0 0 12px;line-height:1.6}'
 			. '.ssv-tr-body p{margin:0 0 .8em}'
+			. '.ssv-archive .ssv-side .ssv-transcript{margin-top:18px}'
+			. '.ssv-archive .ssv-side .ssv-tr-body{max-height:520px}'
 			. '.ssv-ts{all:unset;cursor:pointer;font-size:.8em;opacity:.65;margin-right:6px;font-variant-numeric:tabular-nums}'
 			. '.ssv-ts:hover,.ssv-ts:focus-visible{opacity:1;text-decoration:underline}'
 			. SSFV_Summaries::css()
@@ -477,11 +487,13 @@ final class SSFV_Transcripts {
 			. '<script>(function(){if(window.ssfvTr)return;window.ssfvTr=1;'
 			. 'var api=' . wp_json_encode( esc_url_raw( rest_url( 'ssfv/v1/transcript/' ) ) ) . ';'
 			. 'document.addEventListener("click",function(e){var b=e.target.closest(".ssv-ts");if(!b)return;'
-			. 'var w=b.closest(".ssv-panel")||b.closest(".ssv-sermon");var v=w&&w.querySelector("video");if(!v)return;'
-			. 'v.currentTime=parseInt(b.getAttribute("data-t"),10)||0;v.play();v.scrollIntoView({behavior:"smooth",block:"center"});});'
-			. 'document.addEventListener("toggle",function(e){var d=e.target;if(!d.matches||!d.matches("details.ssv-transcript[data-key]")||!d.open||d.getAttribute("data-loaded"))return;'
+			. 'var a=b.closest(".ssv-archive");var w=a?a.querySelector(".ssv-panel:not([hidden])"):(b.closest(".ssv-panel")||b.closest(".ssv-sermon"));'
+			. 'var v=w&&w.querySelector("video");if(!v)return;'
+			. 'v.currentTime=parseInt(b.getAttribute("data-t"),10)||0;v.play();if(window.innerWidth<720){v.scrollIntoView({behavior:"smooth",block:"center"});}});'
+			. 'window.ssfvTrLoad=function(d){if(!d||!d.open||!d.getAttribute("data-key")||d.getAttribute("data-loaded"))return;'
 			. 'd.setAttribute("data-loaded","1");var body=d.querySelector(".ssv-tr-body");'
-			. 'fetch(api+encodeURIComponent(d.getAttribute("data-key"))).then(function(r){return r.json();}).then(function(j){body.innerHTML=j&&j.html?j.html:"";}).catch(function(){body.textContent="";});},true);'
+			. 'fetch(api+encodeURIComponent(d.getAttribute("data-key"))).then(function(r){return r.json();}).then(function(j){body.innerHTML=j&&j.html?j.html:"";}).catch(function(){body.textContent="";});};'
+			. 'document.addEventListener("toggle",function(e){var d=e.target;if(d.matches&&d.matches("details.ssv-transcript"))window.ssfvTrLoad(d);},true);'
 			. '})();</script>';
 	}
 
