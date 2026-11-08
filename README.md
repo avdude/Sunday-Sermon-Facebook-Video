@@ -68,7 +68,7 @@ Transcripts need the video file from Facebook, so they work only for services po
 Needs transcripts turned on first.
 
 1. In **Sunday Sermon → Settings → Transcripts → Sermon summaries**, turn summaries on and pick a **Provider**:
-   - **AssemblyAI LLM Gateway** (default): uses the AssemblyAI key you already entered. Set the model ID if you want something other than the default `claude-sonnet-4-6`.
+   - **AssemblyAI LLM Gateway** (default): uses the AssemblyAI key you already entered. Pick a model from the **AssemblyAI model** dropdown, which lists AssemblyAI's current models. Which models you can use depends on your AssemblyAI plan; a free account may only have access to Qwen3.5 4B Fast. The plugin trims long transcripts to fit smaller models.
    - **Claude, directly from Anthropic**: paste an API key from the [Claude Console](https://console.anthropic.com) and pick Claude Haiku 5.5 or Sonnet 5.5.
 2. Each finished transcript is summarized automatically. The Dashboard's **Transcripts** card shows the status, with a **Summarize** button to run it again.
 3. On the website, the summary appears above the transcript with a **Start at the sermon** button. With **Show only the sermon in the transcript** on, songs and announcements are hidden from the transcript.
@@ -101,6 +101,8 @@ Needs transcripts turned on first.
 | `me/accounts` returns an empty list | Regenerate the user token and tick your Page in the pop-up; check you have full control. |
 | No recent video matched | Look at **What Facebook returned** on the Dashboard and adjust the match phrases. |
 | "This video can't be embedded" | Set **Player** to **Play on this site**. |
+| AssemblyAI: Your account does not have access to this LLM Gateway model | Pick another model in **AssemblyAI model**, add billing to your AssemblyAI account, or switch **Provider** to Claude. |
+| Couldn't read the summary the AI model returned | Click **Summarize** again; small models sometimes reply in the wrong format. A larger model or Claude is more reliable. |
 
 ## External services
 
