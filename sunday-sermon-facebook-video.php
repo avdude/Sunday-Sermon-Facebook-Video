@@ -3,7 +3,7 @@
  * Plugin Name:       Sunday Sermon Facebook Video
  * Plugin URI:        https://github.com/avdude/Sunday-Sermon-Facebook-Video
  * Description:       Automatically shows your church's latest Facebook service videos (videos, Reels, live streams and video posts) on your WordPress site, with a playlist of past services.
- * Version:           2.5.1
+ * Version:           2.5.2
  * Author:            avdude
  * Author URI:        https://avdude.com
  * License:           GPL-2.0-or-later
@@ -30,7 +30,7 @@ final class SSFV_Sunday_Sermon_Facebook_Video {
 		add_action( 'wp_footer', array( __CLASS__, 'print_footer_js' ), 99 );
 		add_shortcode( 'sunday_sermon_date', array( __CLASS__, 'date_shortcode' ) );
 		add_shortcode( 'sunday_sermon_archive', array( __CLASS__, 'archive_shortcode' ) );
-		add_action( 'admin_menu', array( __CLASS__, 'admin_menu' ) );
+		add_action( 'admin_menu', array( __CLASS__, 'admin_menu' ), 9 ); // Before the Transcripts post type's submenu, so Dashboard stays first.
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'admin_assets' ) );
 		add_action( 'admin_init', array( __CLASS__, 'register_settings' ) );
 		add_action( 'admin_post_ssv_refresh', array( __CLASS__, 'handle_refresh' ) );
@@ -948,11 +948,11 @@ final class SSFV_Sunday_Sermon_Facebook_Video {
 			return;
 		}
 
-		wp_register_style( 'ssv-admin', false, array(), '2.5.1' );
+		wp_register_style( 'ssv-admin', false, array(), '2.5.2' );
 		wp_enqueue_style( 'ssv-admin' );
 		wp_add_inline_style( 'ssv-admin', self::admin_css() );
 
-		wp_register_script( 'ssv-admin', false, array(), '2.5.1', true );
+		wp_register_script( 'ssv-admin', false, array(), '2.5.2', true );
 		wp_enqueue_script( 'ssv-admin' );
 		wp_add_inline_script(
 			'ssv-admin',

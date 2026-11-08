@@ -4,7 +4,7 @@ Tags: church, sermon, facebook, video, live stream
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 2.5.1
+Stable tag: 2.5.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -71,6 +71,9 @@ Anthropic Privacy Policy: https://www.anthropic.com/legal/privacy
 3. Settings.
 
 == Changelog ==
+
+= 2.5.2 =
+* Admin menu order: Dashboard first, then Settings and Transcripts.
 
 = 2.5.1 =
 * Fix: transcripts for older services in the archive stayed on "Loading…". WordPress content filters were rewriting the inline script; the plugin's scripts now print in the page footer.
