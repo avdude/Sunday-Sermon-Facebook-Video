@@ -1,6 +1,6 @@
 <?php
 /**
- * Sermon detection and summaries through the Anthropic (Claude) API.
+ * Sermon detection and summaries through the Anthropic (Claude) API or AssemblyAI's LLM Gateway.
  *
  * Works on finished transcripts: finds where the sermon starts and ends inside the full
  * service, and writes a short summary, key points and the scripture passages. Results are
@@ -14,6 +14,8 @@ defined( 'ABSPATH' ) || exit;
 final class SSFV_Summaries {
 
 	const API     = 'https://api.anthropic.com/v1/messages';
+	const AAI_LLM = 'https://llm-gateway.assemblyai.com/v1/chat/completions';
+	const AAI_DEFAULT_MODEL = 'claude-sonnet-4-6';
 	const VERSION = '2023-06-01';
 
 	/** Longest transcript text sent, in characters (about 3 hours of speech). */
@@ -29,9 +31,17 @@ final class SSFV_Summaries {
 		return SSFV_Sunday_Sermon_Facebook_Video::settings();
 	}
 
+	public static function provider() {
+		$s = self::s();
+		return 'claude' === $s['sum_provider'] ? 'claude' : 'assemblyai';
+	}
+
 	public static function enabled() {
 		$s = self::s();
-		return ! empty( $s['sum_enabled'] ) && ! empty( $s['anthropic_key'] );
+		if ( empty( $s['sum_enabled'] ) ) {
+			return false;
+		}
+		return 'claude' === self::provider() ? ! empty( $s['anthropic_key'] ) : ! empty( $s['aai_key'] );
 	}
 
 	public static function models() {
@@ -64,7 +74,7 @@ final class SSFV_Summaries {
 	 */
 	public static function summarize( $post_id ) {
 		if ( ! self::enabled() ) {
-			return new WP_Error( 'ssfv_sum_off', __( 'Summaries are turned off, or the Anthropic API key is missing.', 'sunday-sermon-facebook-video' ) );
+			return new WP_Error( 'ssfv_sum_off', __( 'Summaries are turned off, or the API key for the chosen provider is missing.', 'sunday-sermon-facebook-video' ) );
 		}
 		if ( 'completed' !== get_post_meta( $post_id, '_ssfv_status', true ) ) {
 			return new WP_Error( 'ssfv_sum_wait', __( 'The transcript isn\'t finished yet.', 'sunday-sermon-facebook-video' ) );
@@ -78,17 +88,87 @@ final class SSFV_Summaries {
 			$text = substr( $text, 0, self::MAX_CHARS );
 		}
 
-		$s     = self::s();
-		$model = array_key_exists( $s['sum_model'], self::models() ) ? $s['sum_model'] : 'claude-haiku-5-5';
+		$fail = static function ( $msg ) use ( $post_id ) {
+			update_post_meta( $post_id, '_ssfv_sum_status', 'error' );
+			update_post_meta( $post_id, '_ssfv_sum_error', sanitize_text_field( $msg ) );
+			return new WP_Error( 'ssfv_sum', $msg );
+		};
 
-		$res = wp_remote_post(
-			self::API,
+		$reply = self::ask( self::prompt( $text ) );
+		if ( is_wp_error( $reply ) ) {
+			return $fail( $reply->get_error_message() );
+		}
+
+		$json = self::extract_json( $reply );
+		if ( ! $json ) {
+			return $fail( __( 'Couldn\'t read the summary the AI model returned. Try again.', 'sunday-sermon-facebook-video' ) );
+		}
+
+		self::store( $post_id, $json );
+		update_post_meta( $post_id, '_ssfv_sum_status', 'done' );
+		delete_post_meta( $post_id, '_ssfv_sum_error' );
+		return true;
+	}
+
+	/**
+	 * Send one prompt to the chosen provider. Returns the reply text or WP_Error.
+	 */
+	private static function ask( $prompt ) {
+		$s = self::s();
+
+		if ( 'claude' === self::provider() ) {
+			$model = array_key_exists( $s['sum_model'], self::models() ) ? $s['sum_model'] : 'claude-haiku-5-5';
+			$res   = wp_remote_post(
+				self::API,
+				array(
+					'timeout' => 90,
+					'headers' => array(
+						'x-api-key'         => $s['anthropic_key'],
+						'anthropic-version' => self::VERSION,
+						'content-type'      => 'application/json',
+					),
+					'body'    => wp_json_encode(
+						array(
+							'model'      => $model,
+							'max_tokens' => 2000,
+							'messages'   => array(
+								array(
+									'role'    => 'user',
+									'content' => $prompt,
+								),
+							),
+						)
+					),
+				)
+			);
+			if ( is_wp_error( $res ) ) {
+				return $res;
+			}
+			$code = (int) wp_remote_retrieve_response_code( $res );
+			$data = json_decode( wp_remote_retrieve_body( $res ), true );
+			if ( 200 !== $code ) {
+				return new WP_Error( 'ssfv_sum', 'Anthropic: ' . ( isset( $data['error']['message'] ) ? $data['error']['message'] : 'HTTP ' . $code ) );
+			}
+			$reply = '';
+			if ( ! empty( $data['content'] ) && is_array( $data['content'] ) ) {
+				foreach ( $data['content'] as $block ) {
+					if ( isset( $block['type'], $block['text'] ) && 'text' === $block['type'] ) {
+						$reply .= $block['text'];
+					}
+				}
+			}
+			return $reply;
+		}
+
+		// AssemblyAI LLM Gateway (OpenAI-style chat completions).
+		$model = '' !== trim( (string) $s['aai_llm_model'] ) ? trim( $s['aai_llm_model'] ) : self::AAI_DEFAULT_MODEL;
+		$res   = wp_remote_post(
+			self::AAI_LLM,
 			array(
 				'timeout' => 90,
 				'headers' => array(
-					'x-api-key'         => $s['anthropic_key'],
-					'anthropic-version' => self::VERSION,
-					'content-type'      => 'application/json',
+					'authorization' => $s['aai_key'],
+					'content-type'  => 'application/json',
 				),
 				'body'    => wp_json_encode(
 					array(
@@ -97,47 +177,36 @@ final class SSFV_Summaries {
 						'messages'   => array(
 							array(
 								'role'    => 'user',
-								'content' => self::prompt( $text ),
+								'content' => $prompt,
 							),
 						),
 					)
 				),
 			)
 		);
-
-		$fail = static function ( $msg ) use ( $post_id ) {
-			update_post_meta( $post_id, '_ssfv_sum_status', 'error' );
-			update_post_meta( $post_id, '_ssfv_sum_error', sanitize_text_field( $msg ) );
-			return new WP_Error( 'ssfv_sum', $msg );
-		};
-
 		if ( is_wp_error( $res ) ) {
-			return $fail( $res->get_error_message() );
+			return $res;
 		}
 		$code = (int) wp_remote_retrieve_response_code( $res );
 		$data = json_decode( wp_remote_retrieve_body( $res ), true );
 		if ( 200 !== $code ) {
-			return $fail( 'Anthropic: ' . ( isset( $data['error']['message'] ) ? $data['error']['message'] : 'HTTP ' . $code ) );
-		}
-
-		$reply = '';
-		if ( ! empty( $data['content'] ) && is_array( $data['content'] ) ) {
-			foreach ( $data['content'] as $block ) {
-				if ( isset( $block['type'], $block['text'] ) && 'text' === $block['type'] ) {
-					$reply .= $block['text'];
-				}
+			$msg = 'HTTP ' . $code;
+			if ( isset( $data['error']['message'] ) ) {
+				$msg = $data['error']['message'];
+			} elseif ( isset( $data['error'] ) && is_string( $data['error'] ) ) {
+				$msg = $data['error'];
 			}
+			return new WP_Error( 'ssfv_sum', 'AssemblyAI: ' . $msg );
 		}
-
-		$json = self::extract_json( $reply );
-		if ( ! $json ) {
-			return $fail( __( 'Couldn\'t read the summary Claude returned. Try again.', 'sunday-sermon-facebook-video' ) );
+		$content = isset( $data['choices'][0]['message']['content'] ) ? $data['choices'][0]['message']['content'] : '';
+		if ( is_array( $content ) ) { // Some gateways return content blocks.
+			$text = '';
+			foreach ( $content as $block ) {
+				$text .= isset( $block['text'] ) ? $block['text'] : '';
+			}
+			$content = $text;
 		}
-
-		self::store( $post_id, $json );
-		update_post_meta( $post_id, '_ssfv_sum_status', 'done' );
-		delete_post_meta( $post_id, '_ssfv_sum_error' );
-		return true;
+		return (string) $content;
 	}
 
 	public static function extract_json( $reply ) {
@@ -353,9 +422,23 @@ final class SSFV_Summaries {
 	public static function settings_fields( $s, $name ) {
 		?>
 		<hr style="border:0;border-top:1px solid #e0e0e3;margin:20px 0">
-		<h2 style="margin-bottom:4px"><span class="dashicons dashicons-format-quote"></span><?php esc_html_e( 'Sermon summaries (Claude)', 'sunday-sermon-facebook-video' ); ?></h2>
-		<p class="ssv-card-desc"><?php esc_html_e( 'After each transcript finishes, Claude finds where the sermon starts and ends, and writes a summary, key points and the Bible passages used.', 'sunday-sermon-facebook-video' ); ?></p>
-		<?php SSFV_Sunday_Sermon_Facebook_Video::switch_field_public( 'sum_enabled', __( 'Turn on summaries', 'sunday-sermon-facebook-video' ), __( 'Needs an Anthropic API key. Anthropic bills per use; a one-hour service costs a few cents with Haiku.', 'sunday-sermon-facebook-video' ), $s ); ?>
+		<h2 style="margin-bottom:4px"><span class="dashicons dashicons-format-quote"></span><?php esc_html_e( 'Sermon summaries', 'sunday-sermon-facebook-video' ); ?></h2>
+		<p class="ssv-card-desc"><?php esc_html_e( 'After each transcript finishes, an AI model finds where the sermon starts and ends, and writes a summary, key points and the Bible passages used.', 'sunday-sermon-facebook-video' ); ?></p>
+		<?php SSFV_Sunday_Sermon_Facebook_Video::switch_field_public( 'sum_enabled', __( 'Turn on summaries', 'sunday-sermon-facebook-video' ), __( 'Billed per use by the provider you choose; a few cents per service.', 'sunday-sermon-facebook-video' ), $s ); ?>
+		<div class="ssv-field">
+			<label for="ssv_sum_provider"><?php esc_html_e( 'Provider', 'sunday-sermon-facebook-video' ); ?></label>
+			<select id="ssv_sum_provider" name="<?php echo esc_attr( $name ); ?>[sum_provider]">
+				<option value="assemblyai" <?php selected( $s['sum_provider'], 'assemblyai' ); ?>><?php esc_html_e( 'AssemblyAI LLM Gateway (uses your AssemblyAI key above)', 'sunday-sermon-facebook-video' ); ?></option>
+				<option value="claude" <?php selected( $s['sum_provider'], 'claude' ); ?>><?php esc_html_e( 'Claude, directly from Anthropic (needs an Anthropic key)', 'sunday-sermon-facebook-video' ); ?></option>
+			</select>
+		</div>
+
+		<div class="ssv-field">
+			<label for="ssv_aai_llm_model"><?php esc_html_e( 'AssemblyAI model', 'sunday-sermon-facebook-video' ); ?></label>
+			<input type="text" id="ssv_aai_llm_model" name="<?php echo esc_attr( $name ); ?>[aai_llm_model]" value="<?php echo esc_attr( $s['aai_llm_model'] ); ?>" placeholder="<?php echo esc_attr( self::AAI_DEFAULT_MODEL ); ?>">
+			<p class="description"><?php esc_html_e( 'Used only with the AssemblyAI provider. Any model ID from AssemblyAI\'s LLM Gateway model list.', 'sunday-sermon-facebook-video' ); ?></p>
+		</div>
+
 		<div class="ssv-field">
 			<label for="ssv_anthropic_key"><?php esc_html_e( 'Anthropic API key', 'sunday-sermon-facebook-video' ); ?></label>
 			<div class="ssv-token-row">
@@ -364,24 +447,25 @@ final class SSFV_Summaries {
 					<span class="ssv-pill ok"><span class="ssv-dot"></span><?php esc_html_e( 'Saved', 'sunday-sermon-facebook-video' ); ?></span>
 				<?php endif; ?>
 			</div>
-			<p class="description"><?php esc_html_e( 'Create one in the Claude Console (console.anthropic.com) under API keys.', 'sunday-sermon-facebook-video' ); ?></p>
+			<p class="description"><?php esc_html_e( 'Used only with the Claude provider. Create one in the Claude Console (console.anthropic.com).', 'sunday-sermon-facebook-video' ); ?></p>
 		</div>
 		<?php if ( $s['anthropic_key'] ) : ?>
 			<div class="ssv-field">
 				<label class="ssv-switch">
 					<input type="checkbox" name="<?php echo esc_attr( $name ); ?>[clear_anthropic_key]" value="1">
 					<span class="ssv-track"></span>
-					<span><strong><?php esc_html_e( 'Remove saved Anthropic key', 'sunday-sermon-facebook-video' ); ?></strong><span class="d"><?php esc_html_e( 'Stops summarizing when you save.', 'sunday-sermon-facebook-video' ); ?></span></span>
+					<span><strong><?php esc_html_e( 'Remove saved Anthropic key', 'sunday-sermon-facebook-video' ); ?></strong><span class="d"><?php esc_html_e( 'Removes it when you save.', 'sunday-sermon-facebook-video' ); ?></span></span>
 				</label>
 			</div>
 		<?php endif; ?>
 		<div class="ssv-field">
-			<label for="ssv_sum_model"><?php esc_html_e( 'Model', 'sunday-sermon-facebook-video' ); ?></label>
+			<label for="ssv_sum_model"><?php esc_html_e( 'Claude model', 'sunday-sermon-facebook-video' ); ?></label>
 			<select id="ssv_sum_model" name="<?php echo esc_attr( $name ); ?>[sum_model]">
 				<?php foreach ( self::models() as $id => $label ) : ?>
 					<option value="<?php echo esc_attr( $id ); ?>" <?php selected( $s['sum_model'], $id ); ?>><?php echo esc_html( $label ); ?></option>
 				<?php endforeach; ?>
 			</select>
+			<p class="description"><?php esc_html_e( 'Used only with the Claude provider.', 'sunday-sermon-facebook-video' ); ?></p>
 		</div>
 		<?php SSFV_Sunday_Sermon_Facebook_Video::switch_field_public( 'sum_trim', __( 'Show only the sermon in the transcript', 'sunday-sermon-facebook-video' ), __( 'Hides songs, announcements and everything outside the sermon. The full transcript stays saved.', 'sunday-sermon-facebook-video' ), $s ); ?>
 		<?php

@@ -3,7 +3,7 @@
  * Plugin Name:       Sunday Sermon Facebook Video
  * Plugin URI:        https://github.com/avdude/Sunday-Sermon-Facebook-Video
  * Description:       Automatically shows your church's latest Facebook service videos (videos, Reels, live streams and video posts) on your WordPress site, with a playlist of past services.
- * Version:           2.3.0
+ * Version:           2.4.0
  * Author:            avdude
  * Author URI:        https://avdude.com
  * License:           GPL-2.0-or-later
@@ -56,6 +56,8 @@ final class SSFV_Sunday_Sermon_Facebook_Video {
 			'tr_vocab'      => '',
 			'anthropic_key' => '',
 			'sum_enabled'   => 0,
+			'sum_provider'  => 'assemblyai',
+			'aai_llm_model' => 'claude-sonnet-4-6',
 			'sum_model'     => 'claude-haiku-5-5',
 			'sum_trim'      => 1,
 			'display'       => 'auto',
@@ -915,11 +917,11 @@ final class SSFV_Sunday_Sermon_Facebook_Video {
 			return;
 		}
 
-		wp_register_style( 'ssv-admin', false, array(), '2.3.0' );
+		wp_register_style( 'ssv-admin', false, array(), '2.4.0' );
 		wp_enqueue_style( 'ssv-admin' );
 		wp_add_inline_style( 'ssv-admin', self::admin_css() );
 
-		wp_register_script( 'ssv-admin', false, array(), '2.3.0', true );
+		wp_register_script( 'ssv-admin', false, array(), '2.4.0', true );
 		wp_enqueue_script( 'ssv-admin' );
 		wp_add_inline_script(
 			'ssv-admin',
@@ -1067,6 +1069,8 @@ final class SSFV_Sunday_Sermon_Facebook_Video {
 		}
 		$out['sum_enabled'] = empty( $in['sum_enabled'] ) ? 0 : 1;
 		$out['sum_trim']    = empty( $in['sum_trim'] ) ? 0 : 1;
+		$out['sum_provider']  = ( isset( $in['sum_provider'] ) && 'claude' === $in['sum_provider'] ) ? 'claude' : 'assemblyai';
+		$out['aai_llm_model'] = isset( $in['aai_llm_model'] ) ? preg_replace( '/[^A-Za-z0-9._:\/-]/', '', $in['aai_llm_model'] ) : 'claude-sonnet-4-6';
 		$out['sum_model']   = ( isset( $in['sum_model'] ) && in_array( $in['sum_model'], array( 'claude-haiku-5-5', 'claude-sonnet-5-5' ), true ) ) ? $in['sum_model'] : 'claude-haiku-5-5';
 		$out['display']      = ( isset( $in['display'] ) && in_array( $in['display'], array( 'auto', 'native', 'embed', 'thumbnail' ), true ) ) ? $in['display'] : 'auto';
 

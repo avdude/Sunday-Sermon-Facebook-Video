@@ -4,7 +4,7 @@ Tags: church, sermon, facebook, video, live stream
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 2.3.0
+Stable tag: 2.4.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -20,7 +20,7 @@ Sunday Sermon Facebook Video checks your church's Facebook Page for service vide
 * Shows live services with a LIVE tag, checking every 5 minutes while live.
 * Keeps showing the last good video if Facebook can't be reached.
 * Optional sermon transcripts through AssemblyAI, with click-to-jump timestamps.
-* Optional sermon summaries through Claude: finds the sermon in the full service, writes a summary, key points and scripture, and adds a "Start at the sermon" button.
+* Optional sermon summaries through AssemblyAI's LLM Gateway or Claude: finds the sermon in the full service, writes a summary, key points and scripture, and adds a "Start at the sermon" button.
 * Admin dashboard with connection status, copy-ready shortcodes and a diagnostics table.
 
 Full setup guide: https://github.com/avdude/Sunday-Sermon-Facebook-Video
@@ -59,7 +59,7 @@ If transcripts are turned on, the plugin also uses AssemblyAI (api.assemblyai.co
 AssemblyAI Terms of Service: https://www.assemblyai.com/legal/terms-of-service
 AssemblyAI Privacy Policy: https://www.assemblyai.com/legal/privacy-policy
 
-If sermon summaries are turned on, the plugin also uses the Claude API (api.anthropic.com), provided by Anthropic, PBC. It sends the text of each finished transcript and your API key, once per transcript (automatically, or when an administrator clicks Summarize), and stores the summary it returns.
+If sermon summaries are turned on, the plugin sends the text of each finished transcript and your API key to the provider you choose: AssemblyAI's LLM Gateway (llm-gateway.assemblyai.com, provided by AssemblyAI, Inc.) or the Claude API (api.anthropic.com, provided by Anthropic, PBC). It sends it once per transcript (automatically, or when an administrator clicks Summarize), and stores the summary it returns.
 
 Anthropic Commercial Terms: https://www.anthropic.com/legal/commercial-terms
 Anthropic Privacy Policy: https://www.anthropic.com/legal/privacy
@@ -71,6 +71,9 @@ Anthropic Privacy Policy: https://www.anthropic.com/legal/privacy
 3. Settings.
 
 == Changelog ==
+
+= 2.4.0 =
+* Sermon summaries can now use AssemblyAI's LLM Gateway (the default, using your existing AssemblyAI key) or Claude directly from Anthropic.
 
 = 2.3.0 =
 * Sermon summaries through Claude: finds where the sermon starts and ends, writes a summary, key points and scripture list, and adds a "Start at the sermon" button.
@@ -113,6 +116,9 @@ Anthropic Privacy Policy: https://www.anthropic.com/legal/privacy
 * First version.
 
 == Upgrade Notice ==
+
+= 2.4.0 =
+Summaries now default to AssemblyAI's LLM Gateway. If you set up summaries with an Anthropic key, choose Claude as the provider in Settings.
 
 = 2.3.0 =
 Adds optional sermon summaries. Nothing changes until you turn them on in Settings.

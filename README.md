@@ -14,7 +14,7 @@ A WordPress plugin that automatically pulls your church's service videos from it
 - **Live streams:** shows a live service with a LIVE tag, then switches to the recording.
 - **Never goes blank:** if Facebook can't be reached, visitors keep seeing the last video that loaded.
 - **Sermon transcripts (optional):** sends each new service to [AssemblyAI](https://www.assemblyai.com) and shows a collapsible transcript under the video. Click a timestamp to jump to that moment. Transcripts can be corrected in WordPress.
-- **Sermon summaries (optional):** Claude finds where the sermon starts and ends inside the full service, then writes a summary, key points and the Bible passages used. Adds a "Start at the sermon" button and can trim the transcript to just the sermon.
+- **Sermon summaries (optional):** an AI model, through AssemblyAI's LLM Gateway or Claude directly, finds where the sermon starts and ends inside the full service, then writes a summary, key points and the Bible passages used. Adds a "Start at the sermon" button and can trim the transcript to just the sermon.
 - **Admin dashboard:** connection status, what's showing, copy-ready shortcodes, and a table showing every video Facebook returned and why it was or wasn't included.
 
 ## Requirements
@@ -67,11 +67,12 @@ Transcripts need the video file from Facebook, so they work only for services po
 
 Needs transcripts turned on first.
 
-1. Create an API key in the [Claude Console](https://console.anthropic.com). Anthropic bills per use; with Claude Haiku 5.5 a one-hour service costs a few cents.
-2. In **Sunday Sermon → Settings → Transcripts**, turn on **Sermon summaries** and paste the key.
-3. Each finished transcript is summarized automatically. The Dashboard's **Transcripts** card shows the status, with a **Summarize** button to run it again.
-4. On the website, the summary appears above the transcript with a **Start at the sermon** button. With **Show only the sermon in the transcript** on, songs and announcements are hidden from the transcript.
-5. Correct anything on the transcript's edit screen in the **Sermon summary** box: start and end times, title, summary, key points and scripture.
+1. In **Sunday Sermon → Settings → Transcripts → Sermon summaries**, turn summaries on and pick a **Provider**:
+   - **AssemblyAI LLM Gateway** (default): uses the AssemblyAI key you already entered. Set the model ID if you want something other than the default `claude-sonnet-4-6`.
+   - **Claude, directly from Anthropic**: paste an API key from the [Claude Console](https://console.anthropic.com) and pick Claude Haiku 5.5 or Sonnet 5.5.
+2. Each finished transcript is summarized automatically. The Dashboard's **Transcripts** card shows the status, with a **Summarize** button to run it again.
+3. On the website, the summary appears above the transcript with a **Start at the sermon** button. With **Show only the sermon in the transcript** on, songs and announcements are hidden from the transcript.
+4. Correct anything on the transcript's edit screen in the **Sermon summary** box: start and end times, title, summary, key points and scripture.
 
 ## Shortcodes
 
@@ -107,7 +108,7 @@ This plugin connects to Meta's [Facebook Graph API](https://developers.facebook.
 
 If you turn on transcripts, the plugin also sends the address of each sermon's video file to [AssemblyAI](https://www.assemblyai.com) (`api.assemblyai.com`) using your API key, and downloads the finished transcript. AssemblyAI fetches and processes the audio. See AssemblyAI's [Terms](https://www.assemblyai.com/legal/terms-of-service) and [Privacy Policy](https://www.assemblyai.com/legal/privacy-policy).
 
-If you turn on sermon summaries, the plugin sends each finished transcript's text to Anthropic's [Claude API](https://docs.claude.com) (`api.anthropic.com`) using your API key, to find the sermon and write the summary. See Anthropic's [Commercial Terms](https://www.anthropic.com/legal/commercial-terms) and [Privacy Policy](https://www.anthropic.com/legal/privacy).
+If you turn on sermon summaries, the plugin sends each finished transcript's text, using your API key, to the provider you choose: AssemblyAI's [LLM Gateway](https://www.assemblyai.com/docs/llm-gateway/overview) (`llm-gateway.assemblyai.com`) or Anthropic's [Claude API](https://docs.claude.com) (`api.anthropic.com`), to find the sermon and write the summary. See Anthropic's [Commercial Terms](https://www.anthropic.com/legal/commercial-terms) and [Privacy Policy](https://www.anthropic.com/legal/privacy).
 
 ## License
 
