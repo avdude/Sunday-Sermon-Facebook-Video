@@ -313,6 +313,10 @@ final class SSFV_Transcripts {
 				);
 				update_post_meta( $id, '_ssfv_status', 'completed' );
 				update_post_meta( $id, '_ssfv_seconds', isset( $res['audio_duration'] ) ? (int) $res['audio_duration'] : 0 );
+				delete_post_meta( $id, '_ssfv_sum_status' );
+				if ( SSFV_Summaries::enabled() ) {
+					SSFV_Summaries::summarize( $id );
+				}
 			} elseif ( 'error' === $status ) {
 				update_post_meta( $id, '_ssfv_status', 'error' );
 				update_post_meta( $id, '_ssfv_error', sanitize_text_field( isset( $res['error'] ) ? $res['error'] : 'Unknown error' ) );
@@ -328,6 +332,7 @@ final class SSFV_Transcripts {
 			return;
 		}
 		self::poll();
+		SSFV_Summaries::backfill();
 
 		$s = self::s();
 		if ( empty( $s['tr_auto'] ) ) {
@@ -414,7 +419,12 @@ final class SSFV_Transcripts {
 
 	private static function body_html( $post_id ) {
 		$html = '';
+		$s    = self::s();
+		list( $from, $to ) = ! empty( $s['sum_trim'] ) ? SSFV_Summaries::range( $post_id ) : array( null, null );
 		foreach ( self::parse( get_post_field( 'post_content', $post_id, 'raw' ) ) as $p ) {
+			if ( null !== $p[0] && ( ( null !== $from && $p[0] < $from ) || ( null !== $to && $p[0] > $to ) ) ) {
+				continue;
+			}
 			$html .= '<p>';
 			if ( null !== $p[0] ) {
 				$label = self::format_time( $p[0] * 1000 );
@@ -440,6 +450,7 @@ final class SSFV_Transcripts {
 		}
 
 		$out  = self::assets();
+		$out .= SSFV_Summaries::render( $id );
 		$out .= '<details class="ssv-transcript"' . ( $lazy ? ' data-key="' . esc_attr( $key ) . '"' : '' ) . '>';
 		$out .= '<summary>' . esc_html__( 'Transcript', 'sunday-sermon-facebook-video' ) . '</summary>';
 		$out .= '<div class="ssv-tr-body">' . ( $lazy ? '<p class="ssv-tr-loading">' . esc_html__( 'Loading…', 'sunday-sermon-facebook-video' ) . '</p>' : self::body_html( $id ) ) . '</div>';
@@ -461,6 +472,7 @@ final class SSFV_Transcripts {
 			. '.ssv-tr-body p{margin:0 0 .8em}'
 			. '.ssv-ts{all:unset;cursor:pointer;font-size:.8em;opacity:.65;margin-right:6px;font-variant-numeric:tabular-nums}'
 			. '.ssv-ts:hover,.ssv-ts:focus-visible{opacity:1;text-decoration:underline}'
+			. SSFV_Summaries::css()
 			. '</style>'
 			. '<script>(function(){if(window.ssfvTr)return;window.ssfvTr=1;'
 			. 'var api=' . wp_json_encode( esc_url_raw( rest_url( 'ssfv/v1/transcript/' ) ) ) . ';'
@@ -543,6 +555,7 @@ final class SSFV_Transcripts {
 				<input type="text" id="ssv_tr_vocab" name="<?php echo esc_attr( $name ); ?>[tr_vocab]" value="<?php echo esc_attr( $s['tr_vocab'] ); ?>" placeholder="Pastor Smith, Kilgore, Habakkuk, Ecclesiastes">
 				<p class="description"><?php esc_html_e( 'Comma-separated. Helps with pastors\' names, local places and Bible books.', 'sunday-sermon-facebook-video' ); ?></p>
 			</div>
+			<?php SSFV_Summaries::settings_fields( $s, $name ); ?>
 		</div>
 		<?php
 	}
@@ -571,8 +584,11 @@ final class SSFV_Transcripts {
 			<table class="ssv-table">
 				<thead><tr>
 					<th><?php esc_html_e( 'Service', 'sunday-sermon-facebook-video' ); ?></th>
-					<th style="width:160px"><?php esc_html_e( 'Transcript', 'sunday-sermon-facebook-video' ); ?></th>
-					<th style="width:160px"></th>
+					<th style="width:140px"><?php esc_html_e( 'Transcript', 'sunday-sermon-facebook-video' ); ?></th>
+					<?php if ( SSFV_Summaries::enabled() ) : ?>
+						<th style="width:140px"><?php esc_html_e( 'Summary', 'sunday-sermon-facebook-video' ); ?></th>
+					<?php endif; ?>
+					<th style="width:200px"></th>
 				</tr></thead>
 				<tbody>
 				<?php foreach ( array_slice( $videos, 0, 8 ) as $v ) : ?>
@@ -599,8 +615,30 @@ final class SSFV_Transcripts {
 								<span class="ssv-pill"><?php esc_html_e( 'Not started', 'sunday-sermon-facebook-video' ); ?></span>
 							<?php endif; ?>
 						</td>
-						<td style="text-align:right">
+						<?php if ( SSFV_Summaries::enabled() ) : ?>
+							<?php $sum = 'completed' === $st ? get_post_meta( $id, '_ssfv_sum_status', true ) : ''; ?>
+							<td>
+								<?php if ( 'done' === $sum ) : ?>
+									<span class="ssv-pill ok"><?php esc_html_e( 'Done', 'sunday-sermon-facebook-video' ); ?></span>
+								<?php elseif ( 'error' === $sum ) : ?>
+									<span class="ssv-pill bad" title="<?php echo esc_attr( get_post_meta( $id, '_ssfv_sum_error', true ) ); ?>"><?php esc_html_e( 'Failed', 'sunday-sermon-facebook-video' ); ?></span>
+								<?php elseif ( 'completed' === $st ) : ?>
+									<span class="ssv-pill info"><?php esc_html_e( 'Waiting', 'sunday-sermon-facebook-video' ); ?></span>
+								<?php else : ?>
+									<span class="ssv-pill">—</span>
+								<?php endif; ?>
+							</td>
+						<?php endif; ?>
+						<td style="text-align:right;white-space:nowrap">
 							<?php if ( 'completed' === $st ) : ?>
+								<?php if ( SSFV_Summaries::enabled() && 'done' !== get_post_meta( $id, '_ssfv_sum_status', true ) ) : ?>
+									<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="display:inline;margin:0">
+										<input type="hidden" name="action" value="ssfv_summarize">
+										<input type="hidden" name="post_id" value="<?php echo (int) $id; ?>">
+										<?php wp_nonce_field( 'ssfv_summarize_' . $id ); ?>
+										<button type="submit" class="button button-small"><?php esc_html_e( 'Summarize', 'sunday-sermon-facebook-video' ); ?></button>
+									</form>
+								<?php endif; ?>
 								<a class="button button-small" href="<?php echo esc_url( get_edit_post_link( $id ) ); ?>"><?php esc_html_e( 'View / edit', 'sunday-sermon-facebook-video' ); ?></a>
 							<?php elseif ( $key && 'manual' !== $key && ! in_array( $st, array( 'queued', 'processing' ), true ) && empty( $v['live'] ) && ! empty( $v['file'] ) ) : ?>
 								<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="margin:0">

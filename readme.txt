@@ -4,7 +4,7 @@ Tags: church, sermon, facebook, video, live stream
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 2.2.0
+Stable tag: 2.3.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -20,6 +20,7 @@ Sunday Sermon Facebook Video checks your church's Facebook Page for service vide
 * Shows live services with a LIVE tag, checking every 5 minutes while live.
 * Keeps showing the last good video if Facebook can't be reached.
 * Optional sermon transcripts through AssemblyAI, with click-to-jump timestamps.
+* Optional sermon summaries through Claude: finds the sermon in the full service, writes a summary, key points and scripture, and adds a "Start at the sermon" button.
 * Admin dashboard with connection status, copy-ready shortcodes and a diagnostics table.
 
 Full setup guide: https://github.com/avdude/Sunday-Sermon-Facebook-Video
@@ -58,6 +59,11 @@ If transcripts are turned on, the plugin also uses AssemblyAI (api.assemblyai.co
 AssemblyAI Terms of Service: https://www.assemblyai.com/legal/terms-of-service
 AssemblyAI Privacy Policy: https://www.assemblyai.com/legal/privacy-policy
 
+If sermon summaries are turned on, the plugin also uses the Claude API (api.anthropic.com), provided by Anthropic, PBC. It sends the text of each finished transcript and your API key, once per transcript (automatically, or when an administrator clicks Summarize), and stores the summary it returns.
+
+Anthropic Commercial Terms: https://www.anthropic.com/legal/commercial-terms
+Anthropic Privacy Policy: https://www.anthropic.com/legal/privacy
+
 == Screenshots ==
 
 1. The sermon archive: latest service with a playlist of past services.
@@ -65,6 +71,11 @@ AssemblyAI Privacy Policy: https://www.assemblyai.com/legal/privacy-policy
 3. Settings.
 
 == Changelog ==
+
+= 2.3.0 =
+* Sermon summaries through Claude: finds where the sermon starts and ends, writes a summary, key points and scripture list, and adds a "Start at the sermon" button.
+* Option to show only the sermon portion of the transcript.
+* Summary box on the transcript edit screen for corrections; Summary column and Summarize button on the Dashboard.
 
 = 2.2.0 =
 * Sermon transcripts through AssemblyAI: automatic for new services, a Dashboard card with status and a Transcribe button, editable transcripts, and a collapsible transcript under the player with click-to-jump timestamps.
@@ -102,6 +113,9 @@ AssemblyAI Privacy Policy: https://www.assemblyai.com/legal/privacy-policy
 * First version.
 
 == Upgrade Notice ==
+
+= 2.3.0 =
+Adds optional sermon summaries. Nothing changes until you turn them on in Settings.
 
 = 2.2.0 =
 Adds optional sermon transcripts. Nothing changes until you turn them on in Settings.

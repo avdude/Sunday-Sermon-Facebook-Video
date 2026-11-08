@@ -14,6 +14,7 @@ A WordPress plugin that automatically pulls your church's service videos from it
 - **Live streams:** shows a live service with a LIVE tag, then switches to the recording.
 - **Never goes blank:** if Facebook can't be reached, visitors keep seeing the last video that loaded.
 - **Sermon transcripts (optional):** sends each new service to [AssemblyAI](https://www.assemblyai.com) and shows a collapsible transcript under the video. Click a timestamp to jump to that moment. Transcripts can be corrected in WordPress.
+- **Sermon summaries (optional):** Claude finds where the sermon starts and ends inside the full service, then writes a summary, key points and the Bible passages used. Adds a "Start at the sermon" button and can trim the transcript to just the sermon.
 - **Admin dashboard:** connection status, what's showing, copy-ready shortcodes, and a table showing every video Facebook returned and why it was or wasn't included.
 
 ## Requirements
@@ -62,6 +63,16 @@ The token stops working if that Facebook account changes its password or loses f
 
 Transcripts need the video file from Facebook, so they work only for services posted as the Page, after a live stream has ended. Add `transcript="no"` to a shortcode to hide them.
 
+## Sermon summaries (optional)
+
+Needs transcripts turned on first.
+
+1. Create an API key in the [Claude Console](https://console.anthropic.com). Anthropic bills per use; with Claude Haiku 5.5 a one-hour service costs a few cents.
+2. In **Sunday Sermon → Settings → Transcripts**, turn on **Sermon summaries** and paste the key.
+3. Each finished transcript is summarized automatically. The Dashboard's **Transcripts** card shows the status, with a **Summarize** button to run it again.
+4. On the website, the summary appears above the transcript with a **Start at the sermon** button. With **Show only the sermon in the transcript** on, songs and announcements are hidden from the transcript.
+5. Correct anything on the transcript's edit screen in the **Sermon summary** box: start and end times, title, summary, key points and scripture.
+
 ## Shortcodes
 
 | Shortcode | Shows | Options |
@@ -95,6 +106,8 @@ Transcripts need the video file from Facebook, so they work only for services po
 This plugin connects to Meta's [Facebook Graph API](https://developers.facebook.com/docs/graph-api/) (`graph.facebook.com`) using the Page access token you provide, to list your Page's videos, Reels, live videos and posts. Requests are made from your server on a schedule and when an administrator clicks **Check Facebook now**. Video files, thumbnails and the optional Facebook player are loaded from Facebook's servers in your visitors' browsers. See Meta's [Terms](https://www.facebook.com/terms.php) and [Privacy Policy](https://www.facebook.com/privacy/policy/).
 
 If you turn on transcripts, the plugin also sends the address of each sermon's video file to [AssemblyAI](https://www.assemblyai.com) (`api.assemblyai.com`) using your API key, and downloads the finished transcript. AssemblyAI fetches and processes the audio. See AssemblyAI's [Terms](https://www.assemblyai.com/legal/terms-of-service) and [Privacy Policy](https://www.assemblyai.com/legal/privacy-policy).
+
+If you turn on sermon summaries, the plugin sends each finished transcript's text to Anthropic's [Claude API](https://docs.claude.com) (`api.anthropic.com`) using your API key, to find the sermon and write the summary. See Anthropic's [Commercial Terms](https://www.anthropic.com/legal/commercial-terms) and [Privacy Policy](https://www.anthropic.com/legal/privacy).
 
 ## License
 

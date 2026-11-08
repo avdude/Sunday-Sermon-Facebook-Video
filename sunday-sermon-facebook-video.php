@@ -3,7 +3,7 @@
  * Plugin Name:       Sunday Sermon Facebook Video
  * Plugin URI:        https://github.com/avdude/Sunday-Sermon-Facebook-Video
  * Description:       Automatically shows your church's latest Facebook service videos (videos, Reels, live streams and video posts) on your WordPress site, with a playlist of past services.
- * Version:           2.2.0
+ * Version:           2.3.0
  * Author:            avdude
  * Author URI:        https://avdude.com
  * License:           GPL-2.0-or-later
@@ -54,6 +54,10 @@ final class SSFV_Sunday_Sermon_Facebook_Video {
 			'tr_limit'      => 8,
 			'tr_lang'       => 'en_us',
 			'tr_vocab'      => '',
+			'anthropic_key' => '',
+			'sum_enabled'   => 0,
+			'sum_model'     => 'claude-haiku-5-5',
+			'sum_trim'      => 1,
 			'display'       => 'auto',
 			'sunday_blank'  => 1,
 			'sunday_only'   => 0,
@@ -911,11 +915,11 @@ final class SSFV_Sunday_Sermon_Facebook_Video {
 			return;
 		}
 
-		wp_register_style( 'ssv-admin', false, array(), '2.2.0' );
+		wp_register_style( 'ssv-admin', false, array(), '2.3.0' );
 		wp_enqueue_style( 'ssv-admin' );
 		wp_add_inline_style( 'ssv-admin', self::admin_css() );
 
-		wp_register_script( 'ssv-admin', false, array(), '2.2.0', true );
+		wp_register_script( 'ssv-admin', false, array(), '2.3.0', true );
 		wp_enqueue_script( 'ssv-admin' );
 		wp_add_inline_script(
 			'ssv-admin',
@@ -1053,6 +1057,17 @@ final class SSFV_Sunday_Sermon_Facebook_Video {
 		$out['tr_limit']   = isset( $in['tr_limit'] ) ? min( 60, max( 1, absint( $in['tr_limit'] ) ) ) : 8;
 		$out['tr_lang']    = ( isset( $in['tr_lang'] ) && in_array( $in['tr_lang'], array( 'en_us', 'es', 'auto' ), true ) ) ? $in['tr_lang'] : 'en_us';
 		$out['tr_vocab']   = isset( $in['tr_vocab'] ) ? sanitize_text_field( $in['tr_vocab'] ) : '';
+		$ant = isset( $in['anthropic_key'] ) ? trim( sanitize_text_field( $in['anthropic_key'] ) ) : '';
+		if ( ! empty( $in['clear_anthropic_key'] ) ) {
+			$out['anthropic_key'] = '';
+		} elseif ( '' === $ant ) {
+			$out['anthropic_key'] = $old['anthropic_key'];
+		} else {
+			$out['anthropic_key'] = $ant;
+		}
+		$out['sum_enabled'] = empty( $in['sum_enabled'] ) ? 0 : 1;
+		$out['sum_trim']    = empty( $in['sum_trim'] ) ? 0 : 1;
+		$out['sum_model']   = ( isset( $in['sum_model'] ) && in_array( $in['sum_model'], array( 'claude-haiku-5-5', 'claude-sonnet-5-5' ), true ) ) ? $in['sum_model'] : 'claude-haiku-5-5';
 		$out['display']      = ( isset( $in['display'] ) && in_array( $in['display'], array( 'auto', 'native', 'embed', 'thumbnail' ), true ) ) ? $in['display'] : 'auto';
 
 		return $out;
@@ -1132,7 +1147,9 @@ final class SSFV_Sunday_Sermon_Facebook_Video {
 			<?php endif; ?>
 
 			<?php if ( isset( $_GET['ssfv_tr'] ) ) : // phpcs:ignore WordPress.Security.NonceVerification.Recommended ?>
-				<?php if ( 'ok' === $_GET['ssfv_tr'] ) : // phpcs:ignore WordPress.Security.NonceVerification.Recommended ?>
+				<?php if ( 'sum' === $_GET['ssfv_tr'] ) : // phpcs:ignore WordPress.Security.NonceVerification.Recommended ?>
+					<div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'Summary created.', 'sunday-sermon-facebook-video' ); ?></p></div>
+				<?php elseif ( 'ok' === $_GET['ssfv_tr'] ) : // phpcs:ignore WordPress.Security.NonceVerification.Recommended ?>
 					<div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'Sent for transcription. It usually takes a few minutes; this page updates as it finishes.', 'sunday-sermon-facebook-video' ); ?></p></div>
 				<?php else : ?>
 					<div class="notice notice-error is-dismissible"><p><?php echo esc_html( (string) get_transient( 'ssfv_tr_notice_' . get_current_user_id() ) ); ?></p></div>
@@ -1445,8 +1462,10 @@ final class SSFV_Sunday_Sermon_Facebook_Video {
 }
 
 require_once __DIR__ . '/includes/class-ssfv-transcripts.php';
+require_once __DIR__ . '/includes/class-ssfv-summaries.php';
 
 SSFV_Sunday_Sermon_Facebook_Video::init();
 SSFV_Transcripts::init();
+SSFV_Summaries::init();
 register_deactivation_hook( __FILE__, array( 'SSFV_Transcripts', 'unschedule' ) );
 register_uninstall_hook( __FILE__, array( 'SSFV_Sunday_Sermon_Facebook_Video', 'uninstall' ) );
