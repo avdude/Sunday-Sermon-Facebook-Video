@@ -4,7 +4,7 @@ Tags: church, sermon, facebook, video, live stream
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 2.1.0
+Stable tag: 2.2.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -19,6 +19,7 @@ Sunday Sermon Facebook Video checks your church's Facebook Page for service vide
 * Uses a date written in the title ("service from 4/6") instead of the upload date.
 * Shows live services with a LIVE tag, checking every 5 minutes while live.
 * Keeps showing the last good video if Facebook can't be reached.
+* Optional sermon transcripts through AssemblyAI, with click-to-jump timestamps.
 * Admin dashboard with connection status, copy-ready shortcodes and a diagnostics table.
 
 Full setup guide: https://github.com/avdude/Sunday-Sermon-Facebook-Video
@@ -52,6 +53,11 @@ This plugin connects to the Facebook Graph API (graph.facebook.com), provided by
 Meta Terms of Service: https://www.facebook.com/terms.php
 Meta Privacy Policy: https://www.facebook.com/privacy/policy/
 
+If transcripts are turned on, the plugin also uses AssemblyAI (api.assemblyai.com), provided by AssemblyAI, Inc. It sends the address of each sermon's video file and your API key when a sermon is sent for transcription (automatically for new services, or when an administrator clicks Transcribe), then checks every 5 minutes until the transcript is ready. AssemblyAI downloads and processes the audio.
+
+AssemblyAI Terms of Service: https://www.assemblyai.com/legal/terms-of-service
+AssemblyAI Privacy Policy: https://www.assemblyai.com/legal/privacy-policy
+
 == Screenshots ==
 
 1. The sermon archive: latest service with a playlist of past services.
@@ -59,6 +65,10 @@ Meta Privacy Policy: https://www.facebook.com/privacy/policy/
 3. Settings.
 
 == Changelog ==
+
+= 2.2.0 =
+* Sermon transcripts through AssemblyAI: automatic for new services, a Dashboard card with status and a Transcribe button, editable transcripts, and a collapsible transcript under the player with click-to-jump timestamps.
+* New shortcode option: transcript="no".
 
 = 2.1.0 =
 * Renamed to Sunday Sermon Facebook Video. New plugin folder and text domain: sunday-sermon-facebook-video.
@@ -92,6 +102,9 @@ Meta Privacy Policy: https://www.facebook.com/privacy/policy/
 * First version.
 
 == Upgrade Notice ==
+
+= 2.2.0 =
+Adds optional sermon transcripts. Nothing changes until you turn them on in Settings.
 
 = 2.1.0 =
 The plugin was renamed and installs in a new folder. Deactivate the old "Sunday Sermon Video" plugin before activating this one. Your settings carry over.

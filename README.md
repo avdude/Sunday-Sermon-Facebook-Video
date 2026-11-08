@@ -13,6 +13,7 @@ A WordPress plugin that automatically pulls your church's service videos from it
 - **Archive with playlist:** the latest service with a "Past services" list beside it; stacks under the player on phones.
 - **Live streams:** shows a live service with a LIVE tag, then switches to the recording.
 - **Never goes blank:** if Facebook can't be reached, visitors keep seeing the last video that loaded.
+- **Sermon transcripts (optional):** sends each new service to [AssemblyAI](https://www.assemblyai.com) and shows a collapsible transcript under the video. Click a timestamp to jump to that moment. Transcripts can be corrected in WordPress.
 - **Admin dashboard:** connection status, what's showing, copy-ready shortcodes, and a table showing every video Facebook returned and why it was or wasn't included.
 
 ## Requirements
@@ -51,12 +52,22 @@ A WordPress plugin that automatically pulls your church's service videos from it
 
 The token stops working if that Facebook account changes its password or loses full control of the Page. If that happens, the Dashboard shows the error and visitors keep seeing the last good video; repeat the steps above.
 
+## Transcripts (optional)
+
+1. Create an account at [assemblyai.com](https://www.assemblyai.com) and copy your API key. AssemblyAI bills per hour of audio.
+2. In **Sunday Sermon → Settings → Transcripts**, turn on transcripts and paste the key.
+3. Choose whether new services are sent automatically (the 3 newest, once each), a monthly limit, the language, and any names or words to recognize (pastors' names, local places, Bible books).
+4. The Dashboard's **Transcripts** card shows each service's status. Use **Transcribe** to send an older service by hand.
+5. Finished transcripts appear under the player. Edit them under **Sunday Sermon → Transcripts**; keep the `[m:ss]` at the start of each paragraph so the timestamps keep working.
+
+Transcripts need the video file from Facebook, so they work only for services posted as the Page, after a live stream has ended. Add `transcript="no"` to a shortcode to hide them.
+
 ## Shortcodes
 
 | Shortcode | Shows | Options |
 | --- | --- | --- |
-| `[sunday_sermon_archive]` | Player with a playlist of past services | `count` (default 8, max 100), `show_title`, `show_date`, `list_title`, `format`, `display`, `fallback`, `match` |
-| `[sunday_sermon]` | The latest service only | `show_title`, `show_date`, `format`, `display`, `fallback`, `match` |
+| `[sunday_sermon_archive]` | Player with a playlist of past services | `count` (default 8, max 100), `show_title`, `show_date`, `list_title`, `format`, `display`, `fallback`, `match`, `transcript` |
+| `[sunday_sermon]` | The latest service only | `show_title`, `show_date`, `format`, `display`, `fallback`, `match`, `transcript` |
 | `[sunday_sermon_date]` | The latest service's date | `format`, `before`, `after`, `match` |
 
 `format` uses [WordPress date codes](https://wordpress.org/documentation/article/customize-date-and-time-format/), e.g. `F j, Y`. `display` is one of `native` (play on site), `auto`, `embed` (Facebook player) or `thumbnail` (opens Facebook).
@@ -82,6 +93,8 @@ The token stops working if that Facebook account changes its password or loses f
 ## External services
 
 This plugin connects to Meta's [Facebook Graph API](https://developers.facebook.com/docs/graph-api/) (`graph.facebook.com`) using the Page access token you provide, to list your Page's videos, Reels, live videos and posts. Requests are made from your server on a schedule and when an administrator clicks **Check Facebook now**. Video files, thumbnails and the optional Facebook player are loaded from Facebook's servers in your visitors' browsers. See Meta's [Terms](https://www.facebook.com/terms.php) and [Privacy Policy](https://www.facebook.com/privacy/policy/).
+
+If you turn on transcripts, the plugin also sends the address of each sermon's video file to [AssemblyAI](https://www.assemblyai.com) (`api.assemblyai.com`) using your API key, and downloads the finished transcript. AssemblyAI fetches and processes the audio. See AssemblyAI's [Terms](https://www.assemblyai.com/legal/terms-of-service) and [Privacy Policy](https://www.assemblyai.com/legal/privacy-policy).
 
 ## License
 

@@ -3,7 +3,7 @@
  * Plugin Name:       Sunday Sermon Facebook Video
  * Plugin URI:        https://github.com/avdude/Sunday-Sermon-Facebook-Video
  * Description:       Automatically shows your church's latest Facebook service videos (videos, Reels, live streams and video posts) on your WordPress site, with a playlist of past services.
- * Version:           2.1.0
+ * Version:           2.2.0
  * Author:            avdude
  * Author URI:        https://avdude.com
  * License:           GPL-2.0-or-later
@@ -48,6 +48,12 @@ final class SSFV_Sunday_Sermon_Facebook_Video {
 			'match'         => 'Sunday Worship Service',
 			'cache_minutes' => 60,
 			'manual_url'    => '',
+			'aai_key'       => '',
+			'tr_enabled'    => 0,
+			'tr_auto'       => 1,
+			'tr_limit'      => 8,
+			'tr_lang'       => 'en_us',
+			'tr_vocab'      => '',
 			'display'       => 'auto',
 			'sunday_blank'  => 1,
 			'sunday_only'   => 0,
@@ -89,6 +95,7 @@ final class SSFV_Sunday_Sermon_Facebook_Video {
 		if ( ! empty( $s['manual_url'] ) ) {
 			return array(
 				array(
+					'key'     => 'manual',
 					'url'     => $s['manual_url'],
 					'title'   => '',
 					'created' => '',
@@ -296,6 +303,9 @@ final class SSFV_Sunday_Sermon_Facebook_Video {
 			}
 		}
 
+		foreach ( $candidates as $k => $c ) {
+			$candidates[ $k ]['key'] = $k;
+		}
 		$candidates = array_values( $candidates );
 
 		// Use a date written in the title/description (e.g. "January 31, 2021" or "4/6") instead of the post date.
@@ -398,6 +408,7 @@ final class SSFV_Sunday_Sermon_Facebook_Video {
 				$link = 'https://www.facebook.com' . $link;
 			}
 			$matches[] = array(
+				'key'     => $c['key'],
 				'url'     => esc_url_raw( $link ),
 				'title'   => sanitize_text_field( '' !== $c['title'] ? $c['title'] : wp_html_excerpt( $c['text'], 80, '…' ) ),
 				'created' => sanitize_text_field( $c['created'] ),
@@ -629,6 +640,7 @@ final class SSFV_Sunday_Sermon_Facebook_Video {
 				'show_title' => 'no',
 				'show_date'  => 'yes',
 				'display'    => $s['display'],
+				'transcript' => 'yes',
 				'format'     => '',
 				'fallback'   => __( 'This week\'s service video will be posted soon.', 'sunday-sermon-facebook-video' ),
 			),
@@ -658,6 +670,9 @@ final class SSFV_Sunday_Sermon_Facebook_Video {
 		$out .= self::render_frame( $video, $atts['display'] );
 		$out .= '<p class="ssv-link"><a href="' . esc_url( $video['url'] ) . '" target="_blank" rel="noopener">'
 			. esc_html__( 'Watch on Facebook', 'sunday-sermon-facebook-video' ) . '</a></p>';
+		if ( 'no' !== $atts['transcript'] ) {
+			$out .= SSFV_Transcripts::render( $video );
+		}
 		$out .= '</div>';
 
 		return $out;
@@ -732,6 +747,7 @@ final class SSFV_Sunday_Sermon_Facebook_Video {
 				'show_date'  => 'no',
 				'list_title' => __( 'Past services', 'sunday-sermon-facebook-video' ),
 				'display'  => $s['display'],
+				'transcript' => 'yes',
 				'fallback' => __( 'This week\'s service video will be posted soon.', 'sunday-sermon-facebook-video' ),
 			),
 			$atts,
@@ -789,6 +805,9 @@ final class SSFV_Sunday_Sermon_Facebook_Video {
 			$out .= self::render_frame( $v, $atts['display'], $i > 0 );
 			$out .= '<p class="ssv-link"><a href="' . esc_url( $v['url'] ) . '" target="_blank" rel="noopener">'
 				. esc_html__( 'Watch on Facebook', 'sunday-sermon-facebook-video' ) . '</a></p>';
+			if ( 'no' !== $atts['transcript'] ) {
+				$out .= SSFV_Transcripts::render( $v, $i > 0 );
+			}
 			$out .= '</div>';
 		}
 		$out .= '</div>';
@@ -892,11 +911,11 @@ final class SSFV_Sunday_Sermon_Facebook_Video {
 			return;
 		}
 
-		wp_register_style( 'ssv-admin', false, array(), '2.1.0' );
+		wp_register_style( 'ssv-admin', false, array(), '2.2.0' );
 		wp_enqueue_style( 'ssv-admin' );
 		wp_add_inline_style( 'ssv-admin', self::admin_css() );
 
-		wp_register_script( 'ssv-admin', false, array(), '2.1.0', true );
+		wp_register_script( 'ssv-admin', false, array(), '2.2.0', true );
 		wp_enqueue_script( 'ssv-admin' );
 		wp_add_inline_script(
 			'ssv-admin',
@@ -1021,6 +1040,19 @@ final class SSFV_Sunday_Sermon_Facebook_Video {
 		$out['sunday_only']  = empty( $in['sunday_only'] ) ? 0 : 1;
 		$out['title_dates']  = empty( $in['title_dates'] ) ? 0 : 1;
 		$out['months']       = isset( $in['months'] ) ? min( 60, absint( $in['months'] ) ) : 0;
+		$aai = isset( $in['aai_key'] ) ? trim( sanitize_text_field( $in['aai_key'] ) ) : '';
+		if ( ! empty( $in['clear_aai_key'] ) ) {
+			$out['aai_key'] = '';
+		} elseif ( '' === $aai ) {
+			$out['aai_key'] = $old['aai_key'];
+		} else {
+			$out['aai_key'] = $aai;
+		}
+		$out['tr_enabled'] = empty( $in['tr_enabled'] ) ? 0 : 1;
+		$out['tr_auto']    = empty( $in['tr_auto'] ) ? 0 : 1;
+		$out['tr_limit']   = isset( $in['tr_limit'] ) ? min( 60, max( 1, absint( $in['tr_limit'] ) ) ) : 8;
+		$out['tr_lang']    = ( isset( $in['tr_lang'] ) && in_array( $in['tr_lang'], array( 'en_us', 'es', 'auto' ), true ) ) ? $in['tr_lang'] : 'en_us';
+		$out['tr_vocab']   = isset( $in['tr_vocab'] ) ? sanitize_text_field( $in['tr_vocab'] ) : '';
 		$out['display']      = ( isset( $in['display'] ) && in_array( $in['display'], array( 'auto', 'native', 'embed', 'thumbnail' ), true ) ) ? $in['display'] : 'auto';
 
 		return $out;
@@ -1097,6 +1129,14 @@ final class SSFV_Sunday_Sermon_Facebook_Video {
 
 			<?php if ( isset( $_GET['ssv_refreshed'] ) ) : // phpcs:ignore WordPress.Security.NonceVerification.Recommended ?>
 				<div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'Checked Facebook just now.', 'sunday-sermon-facebook-video' ); ?></p></div>
+			<?php endif; ?>
+
+			<?php if ( isset( $_GET['ssfv_tr'] ) ) : // phpcs:ignore WordPress.Security.NonceVerification.Recommended ?>
+				<?php if ( 'ok' === $_GET['ssfv_tr'] ) : // phpcs:ignore WordPress.Security.NonceVerification.Recommended ?>
+					<div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'Sent for transcription. It usually takes a few minutes; this page updates as it finishes.', 'sunday-sermon-facebook-video' ); ?></p></div>
+				<?php else : ?>
+					<div class="notice notice-error is-dismissible"><p><?php echo esc_html( (string) get_transient( 'ssfv_tr_notice_' . get_current_user_id() ) ); ?></p></div>
+				<?php endif; ?>
 			<?php endif; ?>
 
 			<?php if ( $has_er ) : ?>
@@ -1188,6 +1228,8 @@ final class SSFV_Sunday_Sermon_Facebook_Video {
 				</div>
 			</div>
 
+			<?php SSFV_Transcripts::dashboard_card( $videos ); ?>
+
 			<?php if ( count( $videos ) > 1 ) : ?>
 				<div class="ssv-card" style="margin-bottom:20px">
 					<h2><span class="dashicons dashicons-images-alt2"></span><?php esc_html_e( 'Recent services', 'sunday-sermon-facebook-video' ); ?></h2>
@@ -1252,6 +1294,10 @@ final class SSFV_Sunday_Sermon_Facebook_Video {
 	/* ------------------------------------------------------------------
 	 * Settings
 	 * ------------------------------------------------------------------ */
+
+	public static function switch_field_public( $key, $title, $desc, $s ) {
+		self::switch_field( $key, $title, $desc, $s );
+	}
 
 	private static function switch_field( $key, $title, $desc, $s ) {
 		$name = self::OPT . '[' . $key . ']';
@@ -1372,6 +1418,7 @@ final class SSFV_Sunday_Sermon_Facebook_Video {
 							<p><span class="ssv-pill warn"><?php esc_html_e( 'Override is on', 'sunday-sermon-facebook-video' ); ?></span></p>
 						<?php endif; ?>
 					</div>
+					<?php SSFV_Transcripts::settings_card( $s, $name ); ?>
 				</div>
 
 				<div class="ssv-savebar">
@@ -1392,9 +1439,14 @@ final class SSFV_Sunday_Sermon_Facebook_Video {
 		delete_option( self::LAST_GOOD );
 		delete_option( self::LAST_ERROR );
 		delete_option( self::LAST_SCAN );
+		wp_clear_scheduled_hook( 'ssfv_transcribe_tick' );
 		self::clear_cache();
 	}
 }
 
+require_once __DIR__ . '/includes/class-ssfv-transcripts.php';
+
 SSFV_Sunday_Sermon_Facebook_Video::init();
+SSFV_Transcripts::init();
+register_deactivation_hook( __FILE__, array( 'SSFV_Transcripts', 'unschedule' ) );
 register_uninstall_hook( __FILE__, array( 'SSFV_Sunday_Sermon_Facebook_Video', 'uninstall' ) );
