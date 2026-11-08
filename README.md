@@ -10,10 +10,10 @@ A WordPress plugin that automatically pulls your church's service videos from it
 - **Plays on your site:** plays the video file directly, so it works even when Facebook's own player blocks the video because of worship music.
 - **Finds services, skips the rest:** matches by phrases like `Sunday Worship Service`, untitled videos posted on Sundays, or Sundays only.
 - **Reads dates from titles:** a post titled "Service from 4/6" is filed under April 6, not the day it was uploaded.
-- **Archive with playlist:** the latest service with a "Past services" list beside it; stacks under the player on phones.
+- **Archive with playlist:** the latest service with a "Past services" list beside it, and the transcript under the list; everything stacks under the player on phones.
 - **Live streams:** shows a live service with a LIVE tag, then switches to the recording.
 - **Never goes blank:** if Facebook can't be reached, visitors keep seeing the last video that loaded.
-- **Sermon transcripts (optional):** sends each new service to [AssemblyAI](https://www.assemblyai.com) and shows a collapsible transcript under the video. Click a timestamp to jump to that moment. Transcripts can be corrected in WordPress.
+- **Sermon transcripts (optional):** sends each new service to [AssemblyAI](https://www.assemblyai.com) and shows the transcript beside the video (under **Past services** in the archive). Click a timestamp to jump to that moment. Transcripts can be corrected in WordPress.
 - **Sermon summaries (optional):** an AI model, through AssemblyAI's LLM Gateway or Claude directly, finds where the sermon starts and ends inside the full service, then writes a summary, key points and the Bible passages used. Adds a "Start at the sermon" button and can trim the transcript to just the sermon.
 - **Admin dashboard:** connection status, what's showing, copy-ready shortcodes, and a table showing every video Facebook returned and why it was or wasn't included.
 
@@ -59,7 +59,7 @@ The token stops working if that Facebook account changes its password or loses f
 2. In **Sunday Sermon → Settings → Transcripts**, turn on transcripts and paste the key.
 3. Choose whether new services are sent automatically (the 3 newest, once each), a monthly limit, the language, and any names or words to recognize (pastors' names, local places, Bible books).
 4. The Dashboard's **Transcripts** card shows each service's status. Use **Transcribe** to send an older service by hand.
-5. Finished transcripts appear under the player. Edit them under **Sunday Sermon → Transcripts**; keep the `[m:ss]` at the start of each paragraph so the timestamps keep working.
+5. Finished transcripts appear in the archive's right-hand column under **Past services** (under the player with `[sunday_sermon]`, or with `transcript_position="below"`). Edit them under **Sunday Sermon → Transcripts**; keep the `[m:ss]` at the start of each paragraph so the timestamps keep working.
 
 Transcripts need the video file from Facebook, so they work only for services posted as the Page, after a live stream has ended. Add `transcript="no"` to a shortcode to hide them.
 
@@ -71,7 +71,7 @@ Needs transcripts turned on first.
    - **AssemblyAI LLM Gateway** (default): uses the AssemblyAI key you already entered. Pick a model from the **AssemblyAI model** dropdown, which lists AssemblyAI's current models. Which models you can use depends on your AssemblyAI plan; a free account may only have access to Qwen3.5 4B Fast. The plugin trims long transcripts to fit smaller models.
    - **Claude, directly from Anthropic**: paste an API key from the [Claude Console](https://console.anthropic.com) and pick Claude Haiku 5.5 or Sonnet 5.5.
 2. Each finished transcript is summarized automatically. The Dashboard's **Transcripts** card shows the status, with a **Summarize** button to run it again.
-3. On the website, the summary appears above the transcript with a **Start at the sermon** button. With **Show only the sermon in the transcript** on, songs and announcements are hidden from the transcript.
+3. On the website, the summary appears under the player with a **Start at the sermon** button, beside the transcript. With **Show only the sermon in the transcript** on, songs and announcements are hidden from the transcript.
 4. Correct anything on the transcript's edit screen in the **Sermon summary** box: start and end times, title, summary, key points and scripture.
 
 ![A sermon page with the summary, key points, scripture and "Start at the sermon" button under the player](docs/screenshots/sermon-summary.png)
