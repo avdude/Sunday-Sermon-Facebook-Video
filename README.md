@@ -74,6 +74,8 @@ Needs transcripts turned on first.
 3. On the website, the summary appears above the transcript with a **Start at the sermon** button. With **Show only the sermon in the transcript** on, songs and announcements are hidden from the transcript.
 4. Correct anything on the transcript's edit screen in the **Sermon summary** box: start and end times, title, summary, key points and scripture.
 
+![A sermon page with the summary, key points, scripture and "Start at the sermon" button under the player](docs/screenshots/sermon-summary.png)
+
 ## Shortcodes
 
 | Shortcode | Shows | Options |
