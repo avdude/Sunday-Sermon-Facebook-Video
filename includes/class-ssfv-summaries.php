@@ -84,8 +84,9 @@ final class SSFV_Summaries {
 		if ( '' === trim( $text ) ) {
 			return new WP_Error( 'ssfv_sum_empty', __( 'The transcript is empty.', 'sunday-sermon-facebook-video' ) );
 		}
-		if ( strlen( $text ) > self::MAX_CHARS ) {
-			$text = substr( $text, 0, self::MAX_CHARS );
+		$max = self::max_chars();
+		if ( strlen( $text ) > $max ) {
+			$text = substr( $text, 0, $max );
 		}
 
 		$fail = static function ( $msg ) use ( $post_id ) {
@@ -203,6 +204,25 @@ final class SSFV_Summaries {
 		return (string) $content;
 	}
 
+	/**
+	 * Most transcript characters the chosen model can take, leaving room for the instructions
+	 * and the reply (about 3 characters per token, to be safe).
+	 */
+	public static function max_chars() {
+		$s = self::s();
+		if ( 'assemblyai' !== self::provider() ) {
+			return self::MAX_CHARS;
+		}
+		self::gateway_models(); // Fills the context-length cache.
+		$ctx   = get_transient( 'ssfv_aai_ctx' );
+		$model = '' !== trim( (string) $s['aai_llm_model'] ) ? trim( $s['aai_llm_model'] ) : self::AAI_DEFAULT_MODEL;
+		if ( ! is_array( $ctx ) || empty( $ctx[ $model ] ) ) {
+			return self::MAX_CHARS;
+		}
+		$tokens = (int) $ctx[ $model ] - 4000; // Instructions + 2,000-token reply + margin.
+		return max( 20000, min( self::MAX_CHARS, $tokens * 3 ) );
+	}
+
 	/** Readable message from an LLM Gateway error response. */
 	public static function gateway_error( $code, $data, $raw ) {
 		$parts = array();
@@ -248,6 +268,7 @@ final class SSFV_Summaries {
 		}
 		$data   = json_decode( wp_remote_retrieve_body( $res ), true );
 		$models = array();
+		$ctx    = array();
 		if ( ! empty( $data['data'] ) && is_array( $data['data'] ) ) {
 			foreach ( $data['data'] as $m ) {
 				if ( empty( $m['id'] ) ) {
@@ -257,10 +278,14 @@ final class SSFV_Summaries {
 					continue;
 				}
 				$models[ sanitize_text_field( $m['id'] ) ] = sanitize_text_field( ! empty( $m['name'] ) ? $m['name'] : $m['id'] );
+				if ( ! empty( $m['context_length'] ) ) {
+					$ctx[ sanitize_text_field( $m['id'] ) ] = (int) $m['context_length'];
+				}
 			}
 		}
 		if ( $models ) {
 			set_transient( 'ssfv_aai_models', $models, DAY_IN_SECONDS );
+			set_transient( 'ssfv_aai_ctx', $ctx, DAY_IN_SECONDS );
 		}
 		return $models;
 	}
